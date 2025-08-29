@@ -7,33 +7,8 @@ class NavbarManager {
     }
 
     init() {
-        this.createNavbar();
         this.updateDateDisplay();
         this.bindEvents();
-    }
-
-    createNavbar() {
-        const navbar = document.createElement('nav');
-        navbar.className = 'navbar';
-        navbar.innerHTML = `
-            <div class="navbar-left">
-                <a href="#" class="navbar-logo">📅 日常记录</a>
-            </div>
-            <div class="navbar-center">
-                <div class="date-selector">
-                    <button class="date-nav-btn" id="prev-date">‹</button>
-                    <span class="current-date" id="current-date"></span>
-                    <button class="date-nav-btn" id="next-date">›</button>
-                </div>
-            </div>
-            <div class="navbar-right">
-                <a href="#" class="nav-btn active" id="home-btn">主页</a>
-                <a href="#" class="nav-btn" id="stats-btn">统计</a>
-                <a href="#" class="nav-btn" id="settings-btn">设置</a>
-            </div>
-        `;
-
-        document.body.appendChild(navbar);
     }
 
     bindEvents() {

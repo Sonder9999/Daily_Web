@@ -6,10 +6,19 @@ const path = require('path');
 const app = express();
 const PORT = 3000;
 
-// 中间件
-app.use(cors());
+// 中间件配置
+app.use(cors({
+    origin: ['http://localhost:5500', 'http://127.0.0.1:5500', 'http://localhost:3000', 'file://', null],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
+
+// 处理预检请求
+app.options('*', cors());
 
 // 数据库配置
 const dbConfig = {
@@ -186,6 +195,15 @@ app.get('/api/statistics/:startDate/:endDate', async (req, res) => {
 
 // 启动服务器
 app.listen(PORT, () => {
-    console.log(`服务器运行在 http://localhost:${PORT}`);
+    console.log(`🚀 服务器运行在 http://localhost:${PORT}`);
+    console.log(`📁 静态文件服务: ${__dirname}`);
+    console.log(`🌐 CORS已启用，支持Live Server访问`);
+    console.log(`💾 数据库: ${dbConfig.database}`);
+    console.log(`\n✅ 现在你可以:`);
+    console.log(`   - 直接访问: http://localhost:${PORT}`);
+    console.log(`   - 使用Live Server打开index.html`);
+    console.log(`   - 双击index.html文件打开`);
+    console.log(`\n🔧 如果Live Server端口不是5500，请在scripts/main.js中修改API_BASE_URL\n`);
+
     testConnection();
 });

@@ -4,25 +4,14 @@ class HoursDisplayManager {
         this.events = [];
         this.currentDate = null;
         this.tooltip = null;
+        this.API_BASE_URL = 'http://localhost:3000'; // 服务器地址
         this.init();
     }
 
     init() {
-        this.createMainContainer();
         this.createTooltip();
         this.generateHourCapsules();
         this.bindEvents();
-    }
-
-    createMainContainer() {
-        const container = document.createElement('div');
-        container.className = 'main-container';
-        container.innerHTML = `
-            <div class="hours-container" id="hours-container">
-                <div class="loading">加载中...</div>
-            </div>
-        `;
-        document.body.appendChild(container);
     }
 
     createTooltip() {
@@ -75,12 +64,15 @@ class HoursDisplayManager {
     async loadEvents(date) {
         try {
             this.currentDate = date;
-            const response = await fetch(`/api/events/${date}`);
+            const response = await fetch(`${this.API_BASE_URL}/api/events/${date}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             this.events = await response.json();
             this.renderEvents();
         } catch (error) {
             console.error('加载事件失败:', error);
-            this.showError('加载事件失败，请稍后重试');
+            this.showError('加载事件失败，请确保服务器正在运行 (node server.js)');
         }
     }
 
@@ -351,9 +343,13 @@ class HoursDisplayManager {
     // 加载事件模板
     async loadEventTemplates() {
         try {
-            const response = await fetch('/api/event-templates');
+            const response = await fetch(`${this.API_BASE_URL}/api/event-templates`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             const templates = await response.json();
             const datalist = document.getElementById('event-templates');
+            datalist.innerHTML = ''; // 清空现有选项
 
             templates.forEach(template => {
                 const option = document.createElement('option');
@@ -362,6 +358,15 @@ class HoursDisplayManager {
             });
         } catch (error) {
             console.error('加载事件模板失败:', error);
+            // 使用默认模板作为后备
+            const defaultTemplates = ['睡觉', '吃饭', '学习', '工作', '运动', '娱乐', '刷B站', '休息'];
+            const datalist = document.getElementById('event-templates');
+            datalist.innerHTML = '';
+            defaultTemplates.forEach(template => {
+                const option = document.createElement('option');
+                option.value = template;
+                datalist.appendChild(option);
+            });
         }
     }
 
@@ -410,7 +415,7 @@ class HoursDisplayManager {
         };
 
         try {
-            const url = eventId ? `/api/events/${eventId}` : '/api/events';
+            const url = eventId ? `${this.API_BASE_URL}/api/events/${eventId}` : `${this.API_BASE_URL}/api/events`;
             const method = eventId ? 'PUT' : 'POST';
 
             const response = await fetch(url, {
@@ -434,14 +439,14 @@ class HoursDisplayManager {
             }
         } catch (error) {
             console.error('保存事件失败:', error);
-            alert('保存失败，请重试');
+            alert('保存失败，请检查服务器连接');
         }
     }
 
     // 删除事件
     async deleteEvent(eventId) {
         try {
-            const response = await fetch(`/api/events/${eventId}`, {
+            const response = await fetch(`${this.API_BASE_URL}/api/events/${eventId}`, {
                 method: 'DELETE'
             });
 
@@ -452,14 +457,14 @@ class HoursDisplayManager {
             }
         } catch (error) {
             console.error('删除事件失败:', error);
-            alert('删除失败，请重试');
+            alert('删除失败，请检查服务器连接');
         }
     }
 
     // 保存事件模板
     async saveEventTemplate(name) {
         try {
-            await fetch('/api/event-templates', {
+            await fetch(`${this.API_BASE_URL}/api/event-templates`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
