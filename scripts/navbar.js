@@ -144,42 +144,9 @@ class NavbarManager {
     }
 
     showDatePicker() {
-        // 创建隐藏的日期输入框
-        const input = document.createElement('input');
-        input.type = 'date';
-        input.value = this.formatDate(this.currentDate);
-        input.style.position = 'fixed';
-        input.style.top = '50%';
-        input.style.left = '50%';
-        input.style.transform = 'translate(-50%, -50%)';
-        input.style.zIndex = '9999';
-        input.style.opacity = '0';
-        input.style.pointerEvents = 'none';
-
-        document.body.appendChild(input);
-
-        // 强制触发日期选择器
-        setTimeout(() => {
-            input.style.opacity = '1';
-            input.style.pointerEvents = 'auto';
-            input.focus();
-            input.click();
-        }, 10);
-
-        input.addEventListener('change', () => {
-            if (input.value) {
-                this.setDate(input.value);
-            }
-            document.body.removeChild(input);
-        });
-
-        // 点击其他地方关闭
-        input.addEventListener('blur', () => {
-            setTimeout(() => {
-                if (document.body.contains(input)) {
-                    document.body.removeChild(input);
-                }
-            }, 100);
+        // 使用自定义日期选择器
+        const datePicker = new CustomDatePicker(this.currentDate, (selectedDate) => {
+            this.setDate(selectedDate);
         });
     }    // 设置日期变化回调
     setDateChangeCallback(callback) {
