@@ -43,6 +43,37 @@ app.get('/api/test', (req, res) => {
     res.json({ message: 'API服务器正常运行', timestamp: new Date().toISOString() });
 });
 
+// 添加测试数据的路由
+app.post('/api/test-data', async (req, res) => {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+
+        // 清除今天的测试数据
+        await pool.execute('DELETE FROM events WHERE date = ? AND event_name LIKE "测试%"', [today]);
+
+        // 添加重叠的测试事件
+        const testEvents = [
+            { start_time: '08:00', end_time: '09:30', event_name: '测试-吃早餐', notes: '重叠测试1' },
+            { start_time: '08:30', end_time: '09:00', event_name: '测试-刷B站', notes: '重叠测试2' },
+            { start_time: '08:45', end_time: '09:15', event_name: '测试-看新闻', notes: '重叠测试3' },
+            { start_time: '14:00', end_time: '15:30', event_name: '测试-学习', notes: '' },
+            { start_time: '14:20', end_time: '15:00', event_name: '测试-休息', notes: '' },
+        ];
+
+        for (const event of testEvents) {
+            await pool.execute(
+                'INSERT INTO events (date, start_time, end_time, event_name, notes) VALUES (?, ?, ?, ?, ?)',
+                [today, event.start_time, event.end_time, event.event_name, event.notes]
+            );
+        }
+
+        res.json({ message: '测试数据添加成功', count: testEvents.length });
+    } catch (error) {
+        console.error('添加测试数据失败:', error);
+        res.status(500).json({ error: '服务器错误' });
+    }
+});
+
 // 获取指定日期的事件
 app.get('/api/events/:date', async (req, res) => {
     try {

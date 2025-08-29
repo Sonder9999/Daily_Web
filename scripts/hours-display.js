@@ -89,66 +89,125 @@ class HoursDisplayManager {
         // 清除所有现有事件
         document.querySelectorAll('.event-block').forEach(block => block.remove());
 
+        // 按小时分组事件
+        const eventsByHour = {};
         this.events.forEach(event => {
-            this.renderEvent(event);
+            const startTime = this.parseTime(event.start_time);
+            const endTime = this.parseTime(event.end_time);
+
+            for (let hour = startTime.hour; hour <= endTime.hour; hour++) {
+                if (!eventsByHour[hour]) {
+                    eventsByHour[hour] = [];
+                }
+
+                let startMinute = 0;
+                let endMinute = 59;
+
+                if (hour === startTime.hour) {
+                    startMinute = startTime.minute;
+                }
+                if (hour === endTime.hour) {
+                    endMinute = endTime.minute;
+                    // 如果结束时间的分钟是0，且不是开始小时，则跳过
+                    if (endTime.minute === 0 && hour !== startTime.hour) {
+                        continue;
+                    }
+                }
+
+                eventsByHour[hour].push({
+                    ...event,
+                    startMinute,
+                    endMinute
+                });
+            }
+        });
+
+        // 为每个小时渲染事件
+        Object.keys(eventsByHour).forEach(hour => {
+            this.renderHourEvents(parseInt(hour), eventsByHour[hour]);
         });
     }
 
-    renderEvent(event) {
-        const startTime = this.parseTime(event.start_time);
-        const endTime = this.parseTime(event.end_time);
+    // 渲染单个小时的事件（处理重叠）
+    renderHourEvents(hour, events) {
+        const capsule = document.querySelector(`[data-hour="${hour}"] .minutes-container`);
+        if (!capsule) return;
 
-        // 处理跨小时事件
-        const startHour = startTime.hour;
-        const endHour = endTime.hour;
+        // 检测重叠并分配层级
+        const eventLayers = this.calculateEventLayers(events);
 
-        for (let hour = startHour; hour <= endHour; hour++) {
-            const capsule = document.querySelector(`[data-hour="${hour}"] .minutes-container`);
-            if (!capsule) continue;
-
-            let startMinute = 0;
-            let endMinute = 59;
-
-            if (hour === startHour) {
-                startMinute = startTime.minute;
-            }
-            if (hour === endHour) {
-                endMinute = endTime.minute;
-            }
-
-            // 如果结束时间的分钟是0，且不是开始小时，则跳过
-            if (hour === endHour && endTime.minute === 0 && hour !== startHour) {
-                continue;
-            }
-
-            this.createEventBlock(capsule, event, startMinute, endMinute, hour);
+        // 调整容器高度以容纳多层事件
+        const maxLayer = Math.max(...eventLayers.map(e => e.layer));
+        if (maxLayer > 0) {
+            const newHeight = 30 + (maxLayer * 28); // 基础30px + 每层28px
+            capsule.style.height = `${newHeight}px`;
+            capsule.parentElement.style.height = `${Math.max(60, newHeight + 30)}px`; // 调整胶囊高度
+        } else {
+            capsule.style.height = '30px';
+            capsule.parentElement.style.height = '60px';
         }
+
+        // 渲染每个事件
+        eventLayers.forEach(eventData => {
+            this.createEventBlock(capsule, eventData, hour);
+        });
     }
 
-    createEventBlock(container, event, startMinute, endMinute, hour) {
+    // 计算事件层级（处理重叠）
+    calculateEventLayers(events) {
+        const eventLayers = [];
+
+        events.forEach(event => {
+            let layer = 0;
+            let placed = false;
+
+            while (!placed) {
+                // 检查当前层是否有冲突
+                const hasConflict = eventLayers.some(existingEvent =>
+                    existingEvent.layer === layer &&
+                    this.eventsOverlap(event, existingEvent)
+                );
+
+                if (!hasConflict) {
+                    eventLayers.push({ ...event, layer });
+                    placed = true;
+                } else {
+                    layer++;
+                }
+            }
+        });
+
+        return eventLayers;
+    }
+
+    // 检查两个事件是否重叠
+    eventsOverlap(event1, event2) {
+        return !(event1.endMinute < event2.startMinute || event2.endMinute < event1.startMinute);
+    }    createEventBlock(container, eventData, hour) {
         const eventBlock = document.createElement('div');
         eventBlock.className = 'event-block';
-        eventBlock.dataset.eventId = event.id;
+        eventBlock.dataset.eventId = eventData.id;
 
         // 计算位置和宽度
-        const left = (startMinute / 60) * 100;
-        const width = ((endMinute - startMinute + 1) / 60) * 100;
+        const left = (eventData.startMinute / 60) * 100;
+        const width = ((eventData.endMinute - eventData.startMinute + 1) / 60) * 100;
 
         eventBlock.style.left = `${left}%`;
         eventBlock.style.width = `${width}%`;
+        eventBlock.style.top = `${2 + (eventData.layer * 28)}px`; // 根据层级调整位置
 
         // 生成事件颜色
-        const color = this.generateEventColor(event.event_name, hour);
+        const color = this.generateEventColor(eventData.event_name, hour);
         eventBlock.style.background = color;
 
         // 事件文本
         const eventText = document.createElement('span');
         eventText.className = 'event-text';
-        eventText.textContent = event.event_name;
+        eventText.textContent = eventData.event_name;
         eventBlock.appendChild(eventText);
 
         // 绑定事件
-        this.bindEventBlockEvents(eventBlock, event);
+        this.bindEventBlockEvents(eventBlock, eventData);
 
         container.appendChild(eventBlock);
     }
