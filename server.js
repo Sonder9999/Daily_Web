@@ -222,16 +222,34 @@ app.get('/api/export', async (req, res) => {
             ORDER BY date, start_time
         `, params);
 
+        // 生成文件名
+        let filename = 'daily_record';
+        if (events.length > 0) {
+            if (startDate && endDate) {
+                filename = `daily_record_${startDate}_to_${endDate}`;
+            } else {
+                // 全部数据时，使用实际数据的日期范围
+                const dates = events.map(event => event.date).sort();
+                const minDate = dates[0].toISOString().split('T')[0];
+                const maxDate = dates[dates.length - 1].toISOString().split('T')[0];
+                if (minDate === maxDate) {
+                    filename = `daily_record_${minDate}`;
+                } else {
+                    filename = `daily_record_${minDate}_to_${maxDate}`;
+                }
+            }
+        }
+
         if (format === 'json') {
             // JSON格式导出
             res.setHeader('Content-Type', 'application/json');
-            res.setHeader('Content-Disposition', 'attachment; filename="events.json"');
+            res.setHeader('Content-Disposition', `attachment; filename="${filename}.json"`);
             res.json(events);
         } else {
             // Markdown格式导出
             const markdownContent = generateMarkdownContent(events);
             res.setHeader('Content-Type', 'text/markdown');
-            res.setHeader('Content-Disposition', 'attachment; filename="events.md"');
+            res.setHeader('Content-Disposition', `attachment; filename="${filename}.md"`);
             res.send(markdownContent);
         }
     } catch (error) {
@@ -267,6 +285,14 @@ app.post('/api/import', upload.single('file'), async (req, res) => {
         let skipped = 0;
 
         for (const event of events) {
+            // 转换日期格式
+            if (event.date) {
+                // 如果是ISO格式的日期，转换为YYYY-MM-DD格式
+                if (event.date.includes('T')) {
+                    event.date = new Date(event.date).toISOString().split('T')[0];
+                }
+            }
+
             // 检查事件是否已存在
             const [existing] = await pool.execute(`
                 SELECT id FROM events
@@ -397,14 +423,14 @@ function parseMarkdownContent(content) {
             const nextLineIndex = lines.indexOf(line) + 1;
             if (nextLineIndex < lines.length) {
                 const timeLine = lines[nextLineIndex];
-                const timeMatch = timeLine.match(/^\s+- (\d{2}:\d{2}) - (\d{2}:\d{2})/);
+                const timeMatch = timeLine.match(/^\s+- (\d{2}:\d{2}:\d{2}) - (\d{2}:\d{2}:\d{2})/);
                 if (timeMatch) {
                     const event = {
                         date: `${currentYear}-${currentMonth}-${currentDay}`,
                         start_time: timeMatch[1],
                         end_time: timeMatch[2],
                         event_name: eventName,
-                        note: ''
+                        notes: ''
                     };
 
                     // 检查是否有备注

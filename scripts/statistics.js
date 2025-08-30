@@ -1,6 +1,7 @@
 // 统计页面管理器
 class StatisticsManager {
     constructor() {
+        this.API_BASE_URL = 'http://localhost:3000'; // 服务器地址
         this.statsData = null;
         this.currentChartType = {
             frequency: 'pie',
@@ -209,7 +210,7 @@ class StatisticsManager {
         try {
             this.showLoading();
 
-            const response = await fetch(`/api/statistics/${startDate}/${endDate}`);
+            const response = await fetch(`${this.API_BASE_URL}/api/statistics/${startDate}/${endDate}`);
 
             if (!response.ok) {
                 throw new Error(`服务器响应错误: ${response.status} ${response.statusText}`);

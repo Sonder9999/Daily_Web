@@ -1,6 +1,7 @@
 // 设置页面管理器
 class SettingsManager {
     constructor() {
+        this.API_BASE_URL = 'http://localhost:3000'; // 服务器地址
         this.init();
     }
 
@@ -223,9 +224,9 @@ class SettingsManager {
         try {
             const rangeType = document.querySelector('input[name="export-range"]:checked').value;
             const format = document.querySelector('input[name="export-format"]:checked').value;
-            const filename = document.getElementById('export-filename').value || document.getElementById('export-filename').placeholder;
+            let filename = document.getElementById('export-filename').value;
 
-            let url = '/api/export';
+            let url = `${this.API_BASE_URL}/api/export`;
             const params = new URLSearchParams();
 
             if (rangeType === 'custom') {
@@ -247,6 +248,20 @@ class SettingsManager {
             const response = await fetch(url);
             if (!response.ok) {
                 throw new Error('导出失败');
+            }
+
+            // 从响应头获取文件名
+            const contentDisposition = response.headers.get('content-disposition');
+            if (contentDisposition && !filename) {
+                const matches = contentDisposition.match(/filename="([^"]+)"/);
+                if (matches) {
+                    filename = matches[1];
+                }
+            }
+
+            // 如果还是没有文件名，使用默认值
+            if (!filename) {
+                filename = document.getElementById('export-filename').placeholder;
             }
 
             const blob = await response.blob();
@@ -354,7 +369,7 @@ class SettingsManager {
             const formData = new FormData();
             formData.append('file', file);
 
-            const response = await fetch('/api/import', {
+            const response = await fetch(`${this.API_BASE_URL}/api/import`, {
                 method: 'POST',
                 body: formData
             });
