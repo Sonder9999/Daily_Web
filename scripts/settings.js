@@ -197,7 +197,7 @@ class SettingsManager {
         return `${year}年${month}月${day}日`;
     }
 
-    updateExportFilename() {
+    async updateExportFilename() {
         const filenameInput = document.getElementById('export-filename');
         const rangeType = document.querySelector('input[name="export-range"]:checked').value;
         const format = document.querySelector('input[name="export-format"]:checked').value;
@@ -205,7 +205,25 @@ class SettingsManager {
         let filename = '';
 
         if (rangeType === 'all') {
-            filename = `daily_record_all.${format}`;
+            // 对于全部数据，从服务器获取实际的日期范围
+            try {
+                const response = await fetch(`${this.API_BASE_URL}/api/export?format=json`);
+                if (response.ok) {
+                    const contentDisposition = response.headers.get('content-disposition');
+                    if (contentDisposition) {
+                        const matches = contentDisposition.match(/filename="([^"]+)"/);
+                        if (matches) {
+                            filename = matches[1].replace('.json', `.${format}`);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.log('无法获取文件名，使用默认值');
+            }
+
+            if (!filename) {
+                filename = `daily_record_all.${format}`;
+            }
         } else {
             const startDate = document.getElementById('export-start-date').dataset.isoDate;
             const endDate = document.getElementById('export-end-date').dataset.isoDate;

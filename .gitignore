@@ -1365,3 +1365,9 @@ node_modules/xtend/test.js
 uploads/9e5e4b04d98da861a8f8da8959b328f9
 uploads/19d2a125c8fc3f6d1f697f8b3b4c9c03
 uploads/bf8a9ed49163050980e688cff04db6b0
+.idea/.gitignore
+.idea/Daily_Web.iml
+.idea/data_source_mapping.xml
+.idea/dataSources.xml
+.idea/modules.xml
+.idea/vcs.xml

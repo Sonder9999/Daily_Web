@@ -214,9 +214,9 @@ app.get('/api/export', async (req, res) => {
             params = [startDate, endDate];
         }
 
-        // 查询所有事件
+        // 查询所有事件，使用DATE_FORMAT确保日期格式正确
         const [events] = await pool.execute(`
-            SELECT id, date, start_time, end_time, event_name, notes
+            SELECT id, DATE_FORMAT(date, '%Y-%m-%d') as date, start_time, end_time, event_name, notes
             FROM events
             ${whereClause}
             ORDER BY date, start_time
@@ -229,9 +229,10 @@ app.get('/api/export', async (req, res) => {
                 filename = `daily_record_${startDate}_to_${endDate}`;
             } else {
                 // 全部数据时，使用实际数据的日期范围
-                const dates = events.map(event => event.date).sort();
-                const minDate = dates[0].toISOString().split('T')[0];
-                const maxDate = dates[dates.length - 1].toISOString().split('T')[0];
+                const dates = events.map(event => event.date).sort(); // 现在日期已经是YYYY-MM-DD字符串格式
+
+                const minDate = dates[0];
+                const maxDate = dates[dates.length - 1];
                 if (minDate === maxDate) {
                     filename = `daily_record_${minDate}`;
                 } else {
@@ -327,10 +328,8 @@ function generateMarkdownContent(events) {
 
     // 按年月日分组
     events.forEach(event => {
-        const date = new Date(event.date);
-        const year = date.getFullYear();
-        const month = date.getMonth() + 1;
-        const day = date.getDate();
+        // 现在日期已经是YYYY-MM-DD字符串格式
+        const [year, month, day] = event.date.split('-').map(Number);
 
         if (!groupedEvents[year]) groupedEvents[year] = {};
         if (!groupedEvents[year][month]) groupedEvents[year][month] = {};
