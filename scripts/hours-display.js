@@ -24,6 +24,9 @@ class HoursDisplayManager {
         const container = document.getElementById('hours-container');
         container.innerHTML = '';
 
+        // 确保容器使用正确的显示样式
+        container.style.display = 'grid';
+
         for (let hour = 0; hour < 24; hour++) {
             const capsule = this.createHourCapsule(hour);
             container.appendChild(capsule);
@@ -512,12 +515,15 @@ class HoursDisplayManager {
         // 监听页面切换事件
         document.addEventListener('pageChange', (e) => {
             const page = e.detail;
-            const container = document.querySelector('.main-container');
+            const mainContainer = document.querySelector('.main-container');
+            const hoursContainer = document.getElementById('hours-container');
 
             if (page === 'home') {
-                container.style.display = 'block';
+                mainContainer.style.display = 'block';
+                hoursContainer.style.display = 'grid'; // 确保使用grid布局
             } else {
-                container.style.display = 'none';
+                mainContainer.style.display = 'none'; // 隐藏main-container
+                hoursContainer.style.display = 'none';
             }
         });
     }

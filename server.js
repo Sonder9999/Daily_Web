@@ -176,16 +176,23 @@ app.get('/api/statistics/:startDate/:endDate', async (req, res) => {
     try {
         const { startDate, endDate } = req.params;
 
-        // 事件频率统计
+        // 事件频率统计 - 修复时间计算
         const [frequencyRows] = await pool.execute(`
             SELECT event_name, COUNT(*) as frequency,
-                   SUM(TIMESTAMPDIFF(MINUTE, start_time, end_time)) as total_minutes
+                   SUM(CASE
+                       WHEN start_time IS NOT NULL AND end_time IS NOT NULL
+                       THEN TIMESTAMPDIFF(MINUTE,
+                           CONCAT(date, ' ', start_time),
+                           CONCAT(date, ' ', end_time))
+                       ELSE 0
+                   END) as total_minutes
             FROM events
             WHERE date BETWEEN ? AND ?
             GROUP BY event_name
             ORDER BY frequency DESC
         `, [startDate, endDate]);
 
+        console.log('统计查询结果:', frequencyRows); // 添加调试日志
         res.json({ frequency: frequencyRows });
     } catch (error) {
         console.error('获取统计数据失败:', error);

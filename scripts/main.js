@@ -4,7 +4,7 @@ class DailyRecordApp {
         this.backgroundManager = null;
         this.navbarManager = null;
         this.hoursDisplayManager = null;
-        this.API_BASE_URL = 'http://localhost:3000';
+        this.statisticsManager = null;
         this.init();
     }
 
@@ -19,16 +19,8 @@ class DailyRecordApp {
         }
     }
 
-    async initializeComponents() {
+    initializeComponents() {
         try {
-            // 检查服务器连接
-            const serverConnected = await this.checkServerConnection();
-
-            if (!serverConnected) {
-                this.showServerError();
-                return;
-            }
-
             // 初始化背景管理器
             this.backgroundManager = new BackgroundManager();
 
@@ -37,6 +29,9 @@ class DailyRecordApp {
 
             // 初始化24小时显示管理器
             this.hoursDisplayManager = new HoursDisplayManager();
+
+            // 初始化统计管理器
+            this.statisticsManager = new StatisticsManager();
 
             // 设置导航栏和小时显示的关联
             this.setupComponentInteractions();
@@ -49,16 +44,6 @@ class DailyRecordApp {
         } catch (error) {
             console.error('应用初始化失败:', error);
             this.showInitError();
-        }
-    }
-
-    // 检查服务器连接
-    async checkServerConnection() {
-        try {
-            const response = await fetch(`${this.API_BASE_URL}/api/test`);
-            return response.ok;
-        } catch (error) {
-            return false;
         }
     }
 
@@ -77,12 +62,15 @@ class DailyRecordApp {
     loadTodayData() {
         const today = this.navbarManager.getCurrentDate();
         this.hoursDisplayManager.loadEvents(today);
+
+        // 确保主页面初始状态正确
+        this.showHomePage();
     }
 
     handlePageChange(page) {
         switch (page) {
             case 'home':
-                // 主页已经在hoursDisplayManager中处理
+                this.showHomePage();
                 break;
             case 'stats':
                 this.showStatsPage();
@@ -93,10 +81,50 @@ class DailyRecordApp {
         }
     }
 
-    showStatsPage() {
-        // TODO: 实现统计页面
-        console.log('显示统计页面');
-        alert('统计功能即将推出！');
+    showHomePage() {
+        // 显示主页面元素
+        const hoursContainer = document.getElementById('hours-container');
+        const statsContainer = document.getElementById('stats-container');
+        const mainContainer = document.querySelector('.main-container');
+
+        if (hoursContainer) {
+            hoursContainer.style.display = 'grid'; // 恢复为grid布局
+        }
+        if (statsContainer) {
+            statsContainer.style.display = 'none';
+        }
+        if (mainContainer) {
+            mainContainer.style.display = 'block';
+        }
+
+        console.log('显示主页面');
+    }    showStatsPage() {
+        // 隐藏主页面元素，显示统计页面
+        const hoursContainer = document.getElementById('hours-container');
+        const mainContainer = document.querySelector('.main-container');
+        const statsContainer = document.getElementById('stats-container');
+
+        if (mainContainer) {
+            mainContainer.style.display = 'none';
+        }
+        if (hoursContainer) {
+            hoursContainer.style.display = 'none';
+        }
+        if (statsContainer) {
+            statsContainer.style.display = 'block';
+        } else {
+            // 如果统计容器不存在，确保统计管理器已创建
+            if (this.statisticsManager) {
+                this.statisticsManager.createStatsContainer();
+                // 重新获取容器
+                const newStatsContainer = document.getElementById('stats-container');
+                if (newStatsContainer) {
+                    newStatsContainer.style.display = 'block';
+                }
+            }
+        }
+
+        console.log('切换到统计页面');
     }
 
     showSettingsPage() {
