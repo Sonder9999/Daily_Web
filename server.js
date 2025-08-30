@@ -383,7 +383,6 @@ function generateMarkdownContent(events) {
 
 // 解析Markdown内容的辅助函数
 function parseMarkdownContent(content) {
-    // 这是一个简化的解析器，实际实现会更复杂
     const events = [];
     const lines = content.split('\n');
 
@@ -391,7 +390,9 @@ function parseMarkdownContent(content) {
     let currentMonth = null;
     let currentDay = null;
 
-    for (const line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+
         // 解析年份
         const yearMatch = line.match(/^# (\d+)年/);
         if (yearMatch) {
@@ -419,7 +420,7 @@ function parseMarkdownContent(content) {
             const eventName = eventMatch[1];
 
             // 下一行应该是时间
-            const nextLineIndex = lines.indexOf(line) + 1;
+            const nextLineIndex = i + 1;
             if (nextLineIndex < lines.length) {
                 const timeLine = lines[nextLineIndex];
                 const timeMatch = timeLine.match(/^\s+- (\d{2}:\d{2}:\d{2}) - (\d{2}:\d{2}:\d{2})/);
@@ -437,7 +438,8 @@ function parseMarkdownContent(content) {
                     if (noteLineIndex < lines.length) {
                         const noteLine = lines[noteLineIndex];
                         const noteMatch = noteLine.match(/^\s+- (.+)$/);
-                        if (noteMatch) {
+                        if (noteMatch && !noteLine.match(/^\s+- \d{2}:\d{2}:\d{2} - \d{2}:\d{2}:\d{2}/)) {
+                            // 确保这不是另一个时间行
                             event.notes = noteMatch[1];
                         }
                     }
