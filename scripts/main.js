@@ -33,6 +33,9 @@ class DailyRecordApp {
             // 初始化统计管理器
             this.statisticsManager = new StatisticsManager();
 
+            // 初始化设置管理器
+            this.settingsManager = new SettingsManager();
+
             // 设置导航栏和小时显示的关联
             this.setupComponentInteractions();
 
@@ -85,6 +88,7 @@ class DailyRecordApp {
         // 显示主页面元素
         const hoursContainer = document.getElementById('hours-container');
         const statsContainer = document.getElementById('stats-container');
+        const settingsContainer = document.getElementById('settings-container');
         const mainContainer = document.querySelector('.main-container');
 
         if (hoursContainer) {
@@ -92,6 +96,9 @@ class DailyRecordApp {
         }
         if (statsContainer) {
             statsContainer.style.display = 'none';
+        }
+        if (settingsContainer) {
+            settingsContainer.style.display = 'none';
         }
         if (mainContainer) {
             mainContainer.style.display = 'block';
@@ -103,12 +110,16 @@ class DailyRecordApp {
         const hoursContainer = document.getElementById('hours-container');
         const mainContainer = document.querySelector('.main-container');
         const statsContainer = document.getElementById('stats-container');
+        const settingsContainer = document.getElementById('settings-container');
 
         if (mainContainer) {
             mainContainer.style.display = 'none';
         }
         if (hoursContainer) {
             hoursContainer.style.display = 'none';
+        }
+        if (settingsContainer) {
+            settingsContainer.style.display = 'none';
         }
         if (statsContainer) {
             statsContainer.style.display = 'block';
@@ -128,9 +139,36 @@ class DailyRecordApp {
     }
 
     showSettingsPage() {
-        // TODO: 实现设置页面
-        console.log('显示设置页面');
-        alert('设置功能即将推出！');
+        // 隐藏其他页面元素，显示设置页面
+        const hoursContainer = document.getElementById('hours-container');
+        const mainContainer = document.querySelector('.main-container');
+        const statsContainer = document.getElementById('stats-container');
+        const settingsContainer = document.getElementById('settings-container');
+
+        if (mainContainer) {
+            mainContainer.style.display = 'none';
+        }
+        if (hoursContainer) {
+            hoursContainer.style.display = 'none';
+        }
+        if (statsContainer) {
+            statsContainer.style.display = 'none';
+        }
+        if (settingsContainer) {
+            settingsContainer.style.display = 'block';
+        } else {
+            // 如果设置容器不存在，确保设置管理器已创建
+            if (this.settingsManager) {
+                this.settingsManager.createSettingsContainer();
+                // 重新获取容器
+                const newSettingsContainer = document.getElementById('settings-container');
+                if (newSettingsContainer) {
+                    newSettingsContainer.style.display = 'block';
+                }
+            }
+        }
+
+        console.log('切换到设置页面');
     }
 
     showServerError() {

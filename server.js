@@ -200,6 +200,232 @@ app.get('/api/statistics/:startDate/:endDate', async (req, res) => {
     }
 });
 
+// 导出数据API
+app.get('/api/export', async (req, res) => {
+    try {
+        const { startDate, endDate, format } = req.query;
+
+        // 构建查询条件
+        let whereClause = '';
+        let params = [];
+
+        if (startDate && endDate) {
+            whereClause = 'WHERE date BETWEEN ? AND ?';
+            params = [startDate, endDate];
+        }
+
+        // 查询所有事件
+        const [events] = await pool.execute(`
+            SELECT id, date, start_time, end_time, event_name, notes
+            FROM events
+            ${whereClause}
+            ORDER BY date, start_time
+        `, params);
+
+        if (format === 'json') {
+            // JSON格式导出
+            res.setHeader('Content-Type', 'application/json');
+            res.setHeader('Content-Disposition', 'attachment; filename="events.json"');
+            res.json(events);
+        } else {
+            // Markdown格式导出
+            const markdownContent = generateMarkdownContent(events);
+            res.setHeader('Content-Type', 'text/markdown');
+            res.setHeader('Content-Disposition', 'attachment; filename="events.md"');
+            res.send(markdownContent);
+        }
+    } catch (error) {
+        console.error('导出数据失败:', error);
+        res.status(500).json({ error: '导出失败' });
+    }
+});
+
+// 导入数据API
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' });
+
+app.post('/api/import', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: '没有上传文件' });
+        }
+
+        const fs = require('fs');
+        const fileContent = fs.readFileSync(req.file.path, 'utf8');
+
+        let events = [];
+
+        if (req.file.originalname.endsWith('.json')) {
+            events = JSON.parse(fileContent);
+        } else if (req.file.originalname.endsWith('.md')) {
+            events = parseMarkdownContent(fileContent);
+        } else {
+            throw new Error('不支持的文件格式');
+        }
+
+        let imported = 0;
+        let skipped = 0;
+
+        for (const event of events) {
+            // 检查事件是否已存在
+            const [existing] = await pool.execute(`
+                SELECT id FROM events
+                WHERE date = ? AND start_time = ? AND end_time = ? AND event_name = ?
+            `, [event.date, event.start_time, event.end_time, event.event_name]);
+
+            if (existing.length === 0) {
+                // 插入新事件
+                await pool.execute(`
+                    INSERT INTO events (date, start_time, end_time, event_name, notes)
+                    VALUES (?, ?, ?, ?, ?)
+                `, [event.date, event.start_time, event.end_time, event.event_name, event.notes || '']);
+                imported++;
+            } else {
+                skipped++;
+            }
+        }
+
+        // 清理上传的文件
+        fs.unlinkSync(req.file.path);
+
+        res.json({ imported, skipped, total: events.length });
+    } catch (error) {
+        console.error('导入数据失败:', error);
+        res.status(500).json({ error: '导入失败: ' + error.message });
+    }
+});
+
+// 生成Markdown内容的辅助函数
+function generateMarkdownContent(events) {
+    const groupedEvents = {};
+
+    // 按年月日分组
+    events.forEach(event => {
+        const date = new Date(event.date);
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+
+        if (!groupedEvents[year]) groupedEvents[year] = {};
+        if (!groupedEvents[year][month]) groupedEvents[year][month] = {};
+        if (!groupedEvents[year][month][day]) groupedEvents[year][month][day] = [];
+
+        groupedEvents[year][month][day].push(event);
+    });
+
+    let markdown = '# 日常记录导出\n\n';
+
+    // 生成Markdown结构
+    Object.keys(groupedEvents).sort().forEach(year => {
+        markdown += `# ${year}年\n\n`;
+
+        Object.keys(groupedEvents[year]).sort((a, b) => parseInt(a) - parseInt(b)).forEach(month => {
+            markdown += `## ${month}月\n\n`;
+
+            Object.keys(groupedEvents[year][month]).sort((a, b) => parseInt(a) - parseInt(b)).forEach(day => {
+                markdown += `### ${month}月${day}日\n\n`;
+
+                const dayEvents = groupedEvents[year][month][day];
+
+                // 按小时分组
+                const hourGroups = {};
+                dayEvents.forEach(event => {
+                    const hour = parseInt(event.start_time.split(':')[0]);
+                    if (!hourGroups[hour]) hourGroups[hour] = [];
+                    hourGroups[hour].push(event);
+                });
+
+                Object.keys(hourGroups).sort((a, b) => parseInt(a) - parseInt(b)).forEach(hour => {
+                    const hourEvents = hourGroups[hour];
+                    markdown += `**${hour}:00 - ${parseInt(hour) + 1}:00**\n\n`;
+
+                    hourEvents.forEach(event => {
+                        markdown += `- ${event.event_name}\n`;
+                        markdown += `  - ${event.start_time} - ${event.end_time}\n`;
+                        if (event.notes) {
+                            markdown += `  - ${event.notes}\n`;
+                        }
+                    });
+
+                    markdown += '\n';
+                });
+            });
+        });
+    });
+
+    return markdown;
+}
+
+// 解析Markdown内容的辅助函数
+function parseMarkdownContent(content) {
+    // 这是一个简化的解析器，实际实现会更复杂
+    const events = [];
+    const lines = content.split('\n');
+
+    let currentYear = null;
+    let currentMonth = null;
+    let currentDay = null;
+
+    for (const line of lines) {
+        // 解析年份
+        const yearMatch = line.match(/^# (\d+)年/);
+        if (yearMatch) {
+            currentYear = yearMatch[1];
+            continue;
+        }
+
+        // 解析月份
+        const monthMatch = line.match(/^## (\d+)月/);
+        if (monthMatch) {
+            currentMonth = monthMatch[1].padStart(2, '0');
+            continue;
+        }
+
+        // 解析日期
+        const dayMatch = line.match(/^### \d+月(\d+)日/);
+        if (dayMatch) {
+            currentDay = dayMatch[1].padStart(2, '0');
+            continue;
+        }
+
+        // 解析事件
+        const eventMatch = line.match(/^- (.+)$/);
+        if (eventMatch && currentYear && currentMonth && currentDay) {
+            const eventName = eventMatch[1];
+
+            // 下一行应该是时间
+            const nextLineIndex = lines.indexOf(line) + 1;
+            if (nextLineIndex < lines.length) {
+                const timeLine = lines[nextLineIndex];
+                const timeMatch = timeLine.match(/^\s+- (\d{2}:\d{2}) - (\d{2}:\d{2})/);
+                if (timeMatch) {
+                    const event = {
+                        date: `${currentYear}-${currentMonth}-${currentDay}`,
+                        start_time: timeMatch[1],
+                        end_time: timeMatch[2],
+                        event_name: eventName,
+                        note: ''
+                    };
+
+                    // 检查是否有备注
+                    const noteLineIndex = nextLineIndex + 1;
+                    if (noteLineIndex < lines.length) {
+                        const noteLine = lines[noteLineIndex];
+                        const noteMatch = noteLine.match(/^\s+- (.+)$/);
+                        if (noteMatch) {
+                            event.notes = noteMatch[1];
+                        }
+                    }
+
+                    events.push(event);
+                }
+            }
+        }
+    }
+
+    return events;
+}
+
 // 启动服务器
 app.listen(PORT, () => {
     console.log(`🚀 服务器运行在 http://localhost:${PORT}`);
